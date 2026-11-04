@@ -1,0 +1,261 @@
+/* =====================================================
+     1. EDITABLE TOKENS
+     Change colours, fonts or spacing here and the whole
+     page updates. This is the only section most people
+     will ever need to touch.
+  ===================================================== */
+  :root{
+    /* ---- Brand palette (soft pastel, jewellery-store feel) ---- */
+    --blush:        #f7e3dd;   /* main background wash */
+    --cream:        #fdf8f4;   /* card background */
+    --rosegold:     #d9a679;   /* primary accent / buttons */
+    --rosegold-dark:#c48a5c;   /* button hover */
+    --dustyrose:    #e7b8ba;   /* secondary accent, dividers */
+    --lavender:     #e7defb;   /* soft secondary wash */
+    --plum:         #4a2c3d;   /* headings / dark text */
+    --plum-soft:    #8a7080;   /* muted text */
+    --line:         #eeded8;   /* input borders */
+
+    /* ---- Typography ---- */
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body:    'Jost', sans-serif;
+
+    /* ---- Shape ---- */
+    --radius-lg: 28px;
+    --radius-md: 14px;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  body{
+    font-family: var(--font-body);
+    background:
+      radial-gradient(circle at 15% 20%, var(--lavender) 0%, transparent 45%),
+      radial-gradient(circle at 85% 80%, var(--dustyrose) 0%, transparent 45%),
+      var(--blush);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    color:var(--plum);
+  }
+
+  /* =====================================================
+     2. LAYOUT — split card: brand side + form side
+  ===================================================== */
+  .card{
+    width:100%;
+    max-width:920px;
+    min-height:600px;
+    background:var(--cream);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 30px 60px -20px rgba(74,44,61,0.25);
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    overflow:hidden;
+  }
+
+  /* ---------- Left: brand / decorative panel ---------- */
+  .brand-panel{
+    position:relative;
+    background: linear-gradient(160deg, var(--dustyrose) 0%, var(--rosegold) 100%);
+    color:var(--cream);
+    padding:56px 44px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    overflow:hidden;
+  }
+
+  .brand-panel .brand-name{
+    font-family:var(--font-display);
+    font-size:2.1rem;
+    font-weight:600;
+    letter-spacing:0.5px;
+  }
+
+  .brand-panel .brand-tag{
+    font-size:0.72rem;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    opacity:0.85;
+    margin-top:4px;
+  }
+
+  .brand-panel .brand-quote{
+    font-family:var(--font-display);
+    font-style:italic;
+    font-size:1.5rem;
+    line-height:1.5;
+    max-width:320px;
+    position:relative;
+    z-index:2;
+  }
+
+  /* Decorative gem — pure CSS/SVG so it's easy to swap out */
+  .gem-deco{
+    position:absolute;
+    right:-40px;
+    bottom:-40px;
+    width:260px;
+    height:260px;
+    opacity:0.35;
+    animation: float 6s ease-in-out infinite;
+  }
+  .sparkle{
+    position:absolute;
+    background:var(--cream);
+    border-radius:50%;
+    opacity:0.8;
+    animation: twinkle 2.4s ease-in-out infinite;
+  }
+  .sparkle:nth-child(1){ width:6px; height:6px; top:20%; left:30%; animation-delay:0s; }
+  .sparkle:nth-child(2){ width:4px; height:4px; top:55%; left:70%; animation-delay:0.8s; }
+  .sparkle:nth-child(3){ width:5px; height:5px; top:75%; left:20%; animation-delay:1.4s; }
+
+  @keyframes float{
+    0%,100%{ transform:translateY(0) rotate(0deg); }
+    50%{ transform:translateY(-12px) rotate(4deg); }
+  }
+  @keyframes twinkle{
+    0%,100%{ opacity:0.2; transform:scale(0.8); }
+    50%{ opacity:1; transform:scale(1.2); }
+  }
+
+  /* ---------- Right: login form panel ---------- */
+  .form-panel{
+    padding:56px 48px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+
+  .form-panel h1{
+    font-family:var(--font-display);
+    font-size:2rem;
+    font-weight:600;
+    color:var(--plum);
+  }
+
+  .form-panel .subtitle{
+    font-size:0.92rem;
+    color:var(--plum-soft);
+    margin-top:6px;
+    margin-bottom:32px;
+  }
+
+  .field{
+    margin-bottom:20px;
+  }
+
+  .field label{
+    display:block;
+    font-size:0.78rem;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--plum-soft);
+    margin-bottom:8px;
+  }
+
+  .field input{
+    width:100%;
+    padding:13px 16px;
+    border:1.5px solid var(--line);
+    border-radius: var(--radius-md);
+    background:#fff;
+    font-family:var(--font-body);
+    font-size:0.95rem;
+    color:var(--plum);
+    outline:none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .field input::placeholder{ color:#c9b9c0; }
+
+  .field input:focus{
+    border-color:var(--rosegold);
+    box-shadow: 0 0 0 4px rgba(217,166,121,0.18);
+  }
+
+  .row-between{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:0.85rem;
+    margin-bottom:28px;
+  }
+
+  .remember{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:var(--plum-soft);
+  }
+  .remember input{ accent-color:var(--rosegold); width:15px; height:15px; }
+
+  .forgot-link{
+    color:var(--rosegold-dark);
+    text-decoration:none;
+    font-weight:500;
+  }
+  .forgot-link:hover{ text-decoration:underline; }
+
+  .btn-primary{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius: var(--radius-md);
+    background: linear-gradient(120deg, var(--rosegold), var(--rosegold-dark));
+    color:#fff;
+    font-family:var(--font-body);
+    font-size:0.95rem;
+    font-weight:500;
+    letter-spacing:0.5px;
+    cursor:pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 10px 20px -8px rgba(196,138,92,0.6);
+  }
+  .btn-primary:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 14px 24px -8px rgba(196,138,92,0.75);
+  }
+  .btn-primary:focus-visible{
+    outline: 3px solid var(--lavender);
+    outline-offset: 3px;
+  }
+
+  .divider{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin:26px 0;
+    color:var(--plum-soft);
+    font-size:0.78rem;
+  }
+  .divider::before, .divider::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--line);
+  }
+
+  .signup-note{
+    text-align:center;
+    font-size:0.88rem;
+    color:var(--plum-soft);
+  }
+  .signup-note a{
+    color:var(--rosegold-dark);
+    font-weight:600;
+    text-decoration:none;
+  }
+  .signup-note a:hover{ text-decoration:underline; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 760px){
+    .card{ grid-template-columns:1fr; }
+    .brand-panel{ padding:36px 32px; min-height:200px; }
+    .brand-panel .brand-quote{ display:none; }
+    .form-panel{ padding:36px 28px; }
+  }

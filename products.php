@@ -1,94 +1,73 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_admin('../');
 
-$page_title = 'Jewellery — ' . SITE_NAME;
-$active_nav = 'products';
+$page_title = 'Products';
+$admin_active = 'products';
 
 $categories = db()->query('SELECT name FROM categories ORDER BY name')->fetchAll(PDO::FETCH_COLUMN);
+$q   = trim((string)($_GET['q'] ?? ''));
+$cat = in_array($_GET['cat'] ?? '', $categories, true) ? $_GET['cat'] : '';
 
-$q    = trim((string)($_GET['q'] ?? ''));
-$cat  = in_array($_GET['cat'] ?? '', $categories, true) ? $_GET['cat'] : 'All';
-$sort = in_array($_GET['sort'] ?? '', ['popular', 'newest', 'low', 'high'], true) ? $_GET['sort'] : 'popular';
-$max  = isset($_GET['max']) && is_numeric($_GET['max']) ? (float)$_GET['max'] : null;
-
-$priceCeil = (float)db()->query('SELECT COALESCE(MAX(price),4000) FROM products')->fetchColumn();
-$priceCeil = max(500, ceil($priceCeil / 500) * 500);
-if ($max === null || $max > $priceCeil) {
-    $max = $priceCeil;
-}
-
-$sql = 'SELECT * FROM products WHERE price <= :max';
-$params = ['max' => $max];
-if ($cat !== 'All') {
-    $sql .= ' AND category = :cat';
-    $params['cat'] = $cat;
-}
-if ($q !== '') {
-    $sql .= ' AND (name LIKE :q OR category LIKE :q)';
-    $params['q'] = '%' . $q . '%';
-}
-$sql .= match ($sort) {
-    'low'    => ' ORDER BY price ASC',
-    'high'   => ' ORDER BY price DESC',
-    'newest' => ' ORDER BY created_at DESC',
-    default  => ' ORDER BY created_at DESC', // "popular" — no popularity column, fall back to newest first
-};
-
+$sql = 'SELECT * FROM products WHERE 1=1';
+$params = [];
+if ($cat !== '') { $sql .= ' AND category = ?'; $params[] = $cat; }
+if ($q !== '')   { $sql .= ' AND (name LIKE ? OR category LIKE ?)'; $params[] = "%$q%"; $params[] = "%$q%"; }
+$sql .= ' ORDER BY created_at DESC';
 $st = db()->prepare($sql);
 $st->execute($params);
 $products = $st->fetchAll();
 
-require __DIR__ . '/includes/header.php';
+require __DIR__ . '/includes_header.php';
 ?>
 
-<div class="page-band"><div class="container"><h1>Jewellery</h1><p>Search, filter and sort our collection.</p></div></div>
-<div class="container page-body">
-  <div class="shop-layout">
-    <aside class="filters panel" aria-label="Filters">
-      <form method="GET" action="products.php">
-        <div class="filter-group">
-          <h4>Search</h4>
-          <input type="search" name="q" placeholder="Name or category" aria-label="Search products" value="<?= e($q) ?>">
-        </div>
-        <div class="filter-group">
-          <h4>Category</h4>
-          <div class="chips">
-            <button type="submit" name="cat" value="All" class="chip <?= $cat === 'All' ? 'on' : '' ?>">All</button>
-            <?php foreach ($categories as $c): ?>
-              <button type="submit" name="cat" value="<?= e($c) ?>" class="chip <?= $cat === $c ? 'on' : '' ?>"><?= e($c) ?></button>
-            <?php endforeach; ?>
-          </div>
-        </div>
-        <div class="filter-group">
-          <h4>Price</h4>
-          <input type="range" name="max" min="0" max="<?= (int)$priceCeil ?>" step="100" value="<?= (int)$max ?>" onchange="this.form.submit()" aria-label="Maximum price">
-          <div class="range-row"><span>₹0</span><span>Up to <?= money($max) ?></span></div>
-        </div>
-        <div class="filter-group">
-          <h4>Sort by</h4>
-          <select name="sort" onchange="this.form.submit()" aria-label="Sort products">
-            <option value="popular" <?= $sort === 'popular' ? 'selected' : '' ?>>Popular</option>
-            <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest</option>
-            <option value="low" <?= $sort === 'low' ? 'selected' : '' ?>>Price: Low to High</option>
-            <option value="high" <?= $sort === 'high' ? 'selected' : '' ?>>Price: High to Low</option>
-          </select>
-        </div>
-        <a class="btn btn-outline btn-block btn-sm" href="products.php">Reset filters</a>
-      </form>
-    </aside>
-    <div>
-      <div class="result-bar"><span><?= count($products) ?> <?= count($products) === 1 ? 'piece' : 'pieces' ?> found</span></div>
-      <div class="p-grid">
-        <?php if ($products): foreach ($products as $p) echo product_card_html($p); else: ?>
-          <div class="empty" style="grid-column:1/-1">
-            <h3>No matches</h3>
-            <p>Try a different word, category or price limit.</p>
-            <a class="btn btn-outline" href="products.php">Reset filters</a>
-          </div>
-        <?php endif; ?>
-      </div>
-    </div>
+<form class="toolbar" method="GET" action="products.php">
+  <input type="search" name="q" value="<?= e($q) ?>" placeholder="Search products…" aria-label="Search products">
+  <select name="cat" onchange="this.form.submit()" aria-label="Filter by category">
+    <option value="">All categories</option>
+    <?php foreach ($categories as $c): ?>
+      <option value="<?= e($c) ?>" <?= $cat === $c ? 'selected' : '' ?>><?= e($c) ?></option>
+    <?php endforeach; ?>
+  </select>
+  <button class="btn btn-outline btn-sm" type="submit">Filter</button>
+  <span class="grow"></span>
+  <a class="btn" href="add_product.php">+ Add product</a>
+</form>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>ID</th><th>Image</th><th>Product name</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead>
+      <tbody>
+      <?php if ($products): foreach ($products as $p): ?>
+        <tr>
+          <td>#<?= (int)$p['id'] ?></td>
+          <td><img class="thumb" src="<?= e(product_image($p['image'], '../')) ?>" alt=""></td>
+          <td><b><?= e($p['name']) ?></b></td>
+          <td><?= e($p['category']) ?></td>
+          <td><?= money($p['price']) ?></td>
+          <td>
+            <?php if ((int)$p['stock'] === 0): ?><span class="status st-cancelled">Out of stock</span>
+            <?php elseif ((int)$p['stock'] <= 5): ?><span class="status st-pending"><?= (int)$p['stock'] ?> left</span>
+            <?php else: ?><?= (int)$p['stock'] ?><?php endif; ?>
+          </td>
+          <td>
+            <div class="row-actions">
+              <a class="btn btn-outline btn-sm" href="edit_product.php?id=<?= (int)$p['id'] ?>">Edit</a>
+              <form method="post" action="delete_product.php" onsubmit="return confirm('Delete this product? This can\'t be undone.');" style="display:inline">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int)$p['id'] ?>">
+                <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      <?php endforeach; else: ?>
+        <tr><td colspan="7" class="muted" style="text-align:center;padding:32px">No products match.</td></tr>
+      <?php endif; ?>
+      </tbody>
+    </table>
   </div>
 </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . '/includes_footer.php'; ?>

@@ -1,57 +1,100 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_login();
+require_once __DIR__ . '/../includes/auth.php';
+require_admin('../');
 
-$page_title = 'My Dashboard — ' . SITE_NAME;
-$active_nav = 'account';
+$page_title = 'Dashboard';
+$admin_active = 'dashboard';
 
-$st = db()->prepare('SELECT COUNT(*) FROM orders WHERE user_id = ?');
-$st->execute([$_SESSION['user_id']]);
-$orderCount = (int)$st->fetchColumn();
+$totalProducts  = (int)db()->query('SELECT COUNT(*) FROM products')->fetchColumn();
+$totalCustomers = (int)db()->query("SELECT COUNT(*) FROM users WHERE role = 'customer'")->fetchColumn();
+$totalOrders    = (int)db()->query('SELECT COUNT(*) FROM orders')->fetchColumn();
+$pendingOrders  = (int)db()->query("SELECT COUNT(*) FROM orders WHERE status = 'Pending'")->fetchColumn();
 
-require __DIR__ . '/includes/header.php';
+$STATUSES = ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'];
+$statusCounts = array_fill_keys($STATUSES, 0);
+$st = db()->query('SELECT status, COUNT(*) n FROM orders GROUP BY status');
+foreach ($st->fetchAll() as $row) {
+    $statusCounts[$row['status']] = (int)$row['n'];
+}
+
+$recent = db()->query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 5')->fetchAll();
+
+$byCat = db()->query("SELECT oi.product_name, p.category, SUM(oi.price*oi.quantity) total
+                       FROM order_items oi
+                       JOIN orders o ON o.id = oi.order_id
+                       LEFT JOIN products p ON p.id = oi.product_id
+                       WHERE o.status != 'Cancelled'
+                       GROUP BY p.category")->fetchAll();
+$catTotals = [];
+foreach ($byCat as $r) {
+    $cat = $r['category'] ?? 'Other';
+    $catTotals[$cat] = ($catTotals[$cat] ?? 0) + (float)$r['total'];
+}
+arsort($catTotals);
+$topCat = $catTotals ? max($catTotals) : 1;
+
+require __DIR__ . '/includes_header.php';
 ?>
 
-<div class="page-band"><div class="container"><h1>My account</h1><p>Manage your details and track your orders.</p></div></div>
+<div class="stat-grid">
+  <div class="stat"><div class="ico">◇</div><div><small>Total Products</small><b><?= $totalProducts ?></b></div></div>
+  <div class="stat"><div class="ico">☺</div><div><small>Total Customers</small><b><?= $totalCustomers ?></b></div></div>
+  <div class="stat"><div class="ico">✉</div><div><small>Total Orders</small><b><?= $totalOrders ?></b></div></div>
+  <div class="stat"><div class="ico">◷</div><div><small>Pending Orders</small><b><?= $pendingOrders ?></b></div></div>
+</div>
 
-<div class="container page-body">
-  <div class="account-layout">
-    <aside class="panel">
-      <div class="avatar"><?= e(substr($_SESSION['name'], 0, 1)) ?></div>
-      <h2 style="font-size:1.9rem;margin:0"><?= e($_SESSION['name']) ?></h2>
-      <div class="profile-list">
-        <div><small>Email</small><?= e($_SESSION['email']) ?></div>
-        <div><small>Account type</small><?= e(ucfirst($_SESSION['role'])) ?></div>
-      </div>
-      <div class="stack">
-        <a class="btn btn-ghost btn-block" href="logout.php">Logout</a>
-      </div>
-    </aside>
-
-    <div class="panel">
-      <h2>Welcome, <?= e($_SESSION['name']) ?></h2>
-      <p class="muted" style="margin-bottom:26px">You have placed <?= $orderCount ?> order<?= $orderCount === 1 ? '' : 's' ?> with us so far.</p>
-
-      <div class="cat-grid" style="grid-template-columns:repeat(4,1fr)">
-        <a class="cat-card" href="products.php">
-          <div style="background:var(--blush);border-radius:22px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);margin-bottom:10px;font-size:2rem">💎</div>
-          <h3 style="font-size:1.15rem">Browse Jewellery</h3>
-        </a>
-        <a class="cat-card" href="cart.php">
-          <div style="background:var(--blush);border-radius:22px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);margin-bottom:10px;font-size:2rem">🛍️</div>
-          <h3 style="font-size:1.15rem">My Cart</h3>
-        </a>
-        <a class="cat-card" href="orders.php">
-          <div style="background:var(--blush);border-radius:22px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);margin-bottom:10px;font-size:2rem">📦</div>
-          <h3 style="font-size:1.15rem">My Orders</h3>
-        </a>
-        <a class="cat-card" href="dashboard.php">
-          <div style="background:var(--blush);border-radius:22px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);margin-bottom:10px;font-size:2rem">👤</div>
-          <h3 style="font-size:1.15rem">Profile</h3>
-        </a>
+<div class="dash-grid">
+  <div class="panel">
+    <h3>Orders by status</h3>
+    <div class="donut-wrap">
+      <?php
+        $colors = ['Pending' => '#e6b34d', 'Confirmed' => '#a68bd8', 'Shipped' => '#6fa3cf', 'Delivered' => '#6fae7d', 'Cancelled' => '#d98487'];
+        $acc = 0; $segs = [];
+        foreach ($STATUSES as $s) {
+            $from = $totalOrders ? $acc / $totalOrders * 100 : 0;
+            $acc += $statusCounts[$s];
+            $to = $totalOrders ? $acc / $totalOrders * 100 : 0;
+            $segs[] = $colors[$s] . " {$from}% {$to}%";
+        }
+      ?>
+      <div class="donut" style="background:conic-gradient(<?= implode(',', $segs) ?>)" data-total="<?= $totalOrders ?>"></div>
+      <div class="legend">
+        <?php foreach ($STATUSES as $s): ?>
+          <div><i style="background:<?= $colors[$s] ?>"></i><?= $s ?> — <?= $statusCounts[$s] ?></div>
+        <?php endforeach; ?>
       </div>
     </div>
   </div>
+  <div class="panel">
+    <h3>Sales by category</h3>
+    <?php if ($catTotals): foreach ($catTotals as $cat => $val): ?>
+      <div class="hbar">
+        <div style="display:flex;justify-content:space-between"><span><?= e($cat) ?></span><b><?= money($val) ?></b></div>
+        <div class="track"><span style="width:<?= $topCat ? round($val / $topCat * 100) : 0 ?>%"></span></div>
+      </div>
+    <?php endforeach; else: ?><p class="muted">No sales yet.</p><?php endif; ?>
+  </div>
 </div>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<div class="panel">
+  <h3>Recent orders</h3>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody>
+      <?php if ($recent): foreach ($recent as $o): ?>
+        <tr>
+          <td><b>FJ-<?= str_pad($o['id'], 5, '0', STR_PAD_LEFT) ?></b></td>
+          <td><?= e($o['full_name']) ?></td>
+          <td><?= money($o['total']) ?></td>
+          <td><span class="status st-<?= strtolower($o['status']) ?>"><?= e($o['status']) ?></span></td>
+        </tr>
+      <?php endforeach; else: ?>
+        <tr><td colspan="4" class="muted" style="text-align:center;padding:32px">No orders yet.</td></tr>
+      <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<?php require __DIR__ . '/includes_footer.php'; ?>
